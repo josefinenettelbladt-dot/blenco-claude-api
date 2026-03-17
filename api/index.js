@@ -6,12 +6,13 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-let KB = "";
+let KB = "Kunskapsbasen kunde inte läsas.";
 try {
   const kbPath = path.join(__dirname, "../public/blenco_knowledge_base.md");
-  KB = fs.readFileSync(kbPath, "utf-8");
+  const data = fs.readFileSync(kbPath, "utf-8");
+  KB = data.substring(0, 5000);
 } catch (e) {
-  KB = "Kunskapsbasen kunde inte läsas.";
+  console.error("KB error:", e.message);
 }
 
 const client = new Anthropic();
@@ -37,15 +38,15 @@ export default async function handler(req, res) {
 
     const msg = await client.messages.create({
       model: "claude-opus-4-6",
-      max_tokens: 800,
-      system: `Du är Blencos kundsupport. Svara ENDAST från kunskapsbasen. Kort och hjälpsamt.\n\nKUNSKAPSBAS:\n${KB}`,
+      max_tokens: 600,
+      system: `Du är Blencos kundsupport. Svara FRÅN kunskapsbasen:\n${KB}`,
       messages: [{ role: "user", content: question }]
     });
 
-    const answer = msg.content[0].type === "text" ? msg.content[0].text : "Något gick fel.";
+    const answer = msg.content[0].type === "text" ? msg.content[0].text : "Error";
     return res.status(200).json({ answer });
   } catch (error) {
-    console.error("Error:", error);
-    return res.status(500).json({ answer: "Ett tekniskt fel uppstod." });
+    console.error("API Error:", error.message);
+    return res.status(500).json({ answer: `Error: ${error.message}` });
   }
 }
