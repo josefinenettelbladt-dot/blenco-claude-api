@@ -8,11 +8,10 @@ const __dirname = path.dirname(__filename);
 
 let KNOWLEDGE_BASE = "";
 try {
-  const knowledgeBasePath = path.join(__dirname, "../public/blenco_knowledge_base.md");
-  KNOWLEDGE_BASE = fs.readFileSync(knowledgeBasePath, "utf-8");
-} catch (error) {
-  console.error("Error:", error);
-  KNOWLEDGE_BASE = "Kunskapsbasen kunde inte läsas.";
+  const kbPath = path.join(__dirname, "../public/blenco_knowledge_base.md");
+  KNOWLEDGE_BASE = fs.readFileSync(kbPath, "utf-8");
+} catch (e) {
+  console.error("Knowledge base error:", e.message);
 }
 
 const client = new Anthropic();
@@ -33,20 +32,20 @@ export default async function handler(req, res) {
   try {
     const { question } = req.body;
     if (!question) {
-      return res.status(400).json({ error: "No question provided" });
+      return res.status(400).json({ error: "No question" });
     }
 
-    const message = await client.messages.create({
+    const msg = await client.messages.create({
       model: "claude-opus-4-6",
-      max_tokens: 1024,
-      system: `Du är Blencos kundsupport. Svara ENDAST från kunskapsbasen. Ge korta, hjälpsamma svar. Om du inte vet, säg "Mejla info@blenco.se". KUNSKAPSBAS: ${KNOWLEDGE_BASE}`,
-      messages: [{ role: "user", content: question }],
+      max_tokens: 800,
+      system: `Du är Blencos kundsupport. Svara ENDAST från kunskapsbasen nedan. Kort och hjälpsamt. KUNSKAPSBAS:\n${KNOWLEDGE_BASE}`,
+      messages: [{ role: "user", content: question }]
     });
 
-    const answer = message.content[0].type === "text" ? message.content[0].text : "Något gick fel.";
-    return res.status(200).json({ answer, success: true });
+    const answer = msg.content[0].type === "text" ? msg.content[0].text : "Error";
+    return res.status(200).json({ answer });
   } catch (error) {
     console.error("Error:", error);
-    return res.status(500).json({ error: error.message, answer: "Ett fel uppstod." });
+    return res.status(500).json({ answer: "Ett fel uppstod." });
   }
 }
